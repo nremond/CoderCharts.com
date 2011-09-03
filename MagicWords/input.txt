@@ -1,0 +1,3 @@
+welcome to coder charts
+Your program must take one and only one command line argument the input file
+The input file simply contains a message made of words that are separated by spaces or newlines.
