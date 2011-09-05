@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
-import sys
-import math
-	
+import sys, math, random
+
+
 class Point:
 	"""
 	Represents a 2D point
@@ -10,125 +10,111 @@ class Point:
 	def __init__(self, x, y):
 		self.x = x
 		self.y = y
-		self.theta = math.atan2(y, x)
 	def __repr__(self):
 		return repr((self.x, self.y))
 
 def norm(p1,p2) :
 	return math.sqrt((p1.x-p2.x)**2 + (p1.y-p2.y)**2)
-
-class Polygon:
-	def __init__(self, a):
-		self.pts = a
-	
-	def area(self):
-		area = 0.0
-		pts = self.pts;
-		j = len(pts)-1
-		i = 0
-		for point in pts:
-			p1 = pts[i]
-			p2 = pts[j]
-			area += p1.x * p2.y
-			area -= p1.y * p2.x
-			j = i
-			i += 1
 		
-		area /= 2.0;
-		return area;
-
-	def centroid(self):
-		pts = self.pts;
-		x = 0.0
-		y = 0.0
-		j = len(pts)-1
-		i = 0
-	
-		for point in pts:
-			p1=pts[i]
-			p2=pts[j]
-			f = p1.x*p2.y - p2.x*p1.y
-			x += (p1.x+p2.x) * f
-			y += (p1.y+p2.y) * f
-			j = i
-			i += 1
-	
-		f = self.area() * 6.0
-		return Point(x/f, y/f)
-
-
-def distance(airports, gas_stations):
-	D = 0.0
-	for a in airports :
-		min = 99999999999999.0
-		for g in gas_stations :
-			d = (a.x-g.x)**2 + (a.y-g.y)**2
-			if d < min :
-				min = d
-		D += min
 		
-	return math.sqrt(D)
-
-
-def compute_centroid(points):
-	if len(points) == 1 :
-		return points[0]
-	elif len(points) == 2 :
-		x = (points[0].x+ points[1].x) / 2.0
-		y = (points[0].y+ points[1].y) / 2.0
-		return  Point(x,y)
-	else :
-		return Polygon(points).centroid()
+# -- The Cluster class represents clusters of points in n-dimensional space
+class Cluster:
+	# Instance variables
+	# self.points is a list of Points associated with this Cluster
+	# self.centroid is the sample mean Point of this Cluster
+	def __init__(self, points):
+		self.points = points
+	 
+		# Figure out what the centroid of this Cluster should be
+		self.centroid = self.calculateCentroid()
+   
+   # Return a string representation of this Cluster
+	def __repr__(self):
+		return str(self.points) + "centroid=" + str(self.centroid)
+   
+	# Update function for the K-means algorithm
+	# Assigns a new list of Points to this Cluster, returns centroid difference
+	def update(self, points):
+		old_centroid = self.centroid
+		self.points = points
+		self.centroid = self.calculateCentroid()
+		return norm(old_centroid, self.centroid)
 	
-from itertools import izip_longest
-from itertools import ifilter
-
-def compute_centroids(points, c):
-	centroids = []
-
-	l = len(points)
-	q = l/c 
-	if l%c != 0:
-		q += 1
-
-	i = izip_longest(*[iter(points)]*q)
-	for k in i:
-		sub_points = list(ifilter(lambda a: a is not None, k))
-		#print "subpoints",sub_points
-		centroid = compute_centroid(sub_points)
-		#print "new centroid=",centroid
-		centroids.append(centroid)
+	# Calculates the centroid Point - the centroid is the sample mean Point
+	# (in plain English, the average of all the Points in the Cluster)
+	def calculateCentroid(self):
+		centroid = Point(0.0, 0.0)
 		
-	return centroids
-
-
-	
-def print_centroids(centroids) :
-	for c in centroids:
-		print c.x,c.y,
-	
-def weiszfeld_iter(points, y):
-	y1 = Point(0.0, 0.0)
-	denom = 0.0
-	for p in points : 
-		n = norm(p,y)
-		y1.x += p.x / n
-		y1.y += p.y / n
+		for p in self.points:
+			centroid.x += p.x
+			centroid.y += p.y
 		
-		denom += 1.0 / n
+		n = len(self.points)
+		centroid.x /= n
+		centroid.y /= n
+	   
+		# Return a Point object using the average coordinates
+		return centroid
+
+def random_points(k):
+	points = []
+	for k in range(k):
+		points.append(Point(random(), random()))
 		
-	y1.x /= denom
-	y1.y /= denom
-
-	return y1
-
-def weiszfeld(points):
-	y = Point(0.2,0.2)
-	for i in range(1000):
-		y = weiszfeld_iter(points, y)
-	return y
+		
+# -- Return Clusters of Points formed by K-means clustering
+def kmeans(points, k, cutoff):
+	# Randomly sample k Points from the points list, build Clusters around them
+	initial = random.sample(points, k)
 	
+	clusters = []
+	for p in initial: 
+		clusters.append(Cluster([p]))
+	
+	# Enter the program loop
+	while True:
+		# Make a list for each Cluster
+		lists = []
+		for c in clusters: 
+			lists.append([])
+		
+		# For each Point:
+		for p in points:
+			# Figure out which Cluster's centroid is the nearest
+			smallest_distance = norm(p, clusters[0].centroid)
+			index = 0
+			for i in range(len(clusters[1:])):
+				distance = norm(p, clusters[i+1].centroid)
+				if distance < smallest_distance:
+					smallest_distance = distance
+					index = i+1
+					
+			# Add this Point to that Cluster's corresponding list
+			lists[index].append(p)
+		
+		# Update each Cluster with the corresponding list
+		# Record the biggest centroid shift for any Cluster
+		biggest_shift = 0.0
+		for i in range(len(clusters)):
+			shift = clusters[i].update(lists[i])
+			biggest_shift = max(biggest_shift, shift)
+			
+		# If the biggest centroid shift is less than the cutoff, stop
+		if biggest_shift < cutoff: 
+			break
+		
+	# Return the list of Clusters
+	return clusters
+	
+	
+def print_centroids(clusters) :
+	for c in clusters:
+		print c.centroid.x,c.centroid.y,
+
+	
+# -- Main function
 def main(argv):
+
 	if len(argv) != 2 :
 		print argv[0] + " takes exactly 1 arguments"
 		exit(0)
@@ -141,37 +127,40 @@ def main(argv):
 			points.append(Point(x,y))
 
 		#sort the points by their angle
-		points.sort(key=lambda point: point.theta)
+		#points.sort(key=lambda point: point.theta)
 		
 		p = int(f.readline())
 		gas_stations = []	
 		for i in xrange(p):
 			g = int(f.readline())
 			gas_stations.append(g)
+
+
+		cutoff = 0.1
 		
-		#zone de merde
-		#points = points[0:3]
-		#print "all points:", points
-		#print gas_stations
+		for g in gas_stations:
+			clusters = kmeans(points, g, cutoff)
+			print_centroids(clusters)
+			print ""
 		
 		
-		print "dw", distance(points, [weiszfeld(points)])
-	
-		#for g in gas_stations:
-		#	centroids = compute_centroids(points, g)
-		#	print_centroids(centroids)
-		#	print ""
-			
-	
-		centroids = compute_centroids(points, 1)
-		#print "centroids", centroids
-		print "dc", distance(points, centroids)
 		
-		#print "d3", distance(points, [Point(-1.5,0), Point(1,-1), Point(1,1.5)])
-		print "d1", distance(points, [Point(0,0.4)])
+		
+		
+		exit(0)
+		
+		k =  3
+		cutoff = 0.01 
+		
+		# Cluster the points using the K-means algorithm
+		clusters = kmeans(points, k, cutoff)
+		
+		# Print the results
+		print "\nPOINTS:"
+		for p in points: print "P:", p
+		print "\nCLUSTERS:"
+		for c in clusters: print "C:", c
 	
-	
-if __name__ == "__main__":
-	main(sys.argv)			
-			
-	
+# -- The following code executes upon command-line invocation
+if __name__ == "__main__": 
+	main(sys.argv)
