@@ -1,0 +1,12 @@
+6 7
+frank bob
+bob marley
+bob john
+john frank
+jenny bob
+carol jenny
+carol frank
+3
+frank
+jenny
+bob
