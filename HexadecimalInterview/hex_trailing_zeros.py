@@ -22,6 +22,7 @@
 def trailing_zeros(n):
 	pow = 0
 	twos = 0
+	# count the number of twos
 	while True:
 		pow += 1
 		d = 2**pow
@@ -29,6 +30,7 @@ def trailing_zeros(n):
 			break
 		twos += int(n/d)
 		
+	# we need 4 twos to get a trailing zero in hexadecimal
 	return twos / 4
 		
 
