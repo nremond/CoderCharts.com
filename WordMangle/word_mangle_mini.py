@@ -1,0 +1,1 @@
+import sys;l=open(sys.argv[1]).read().split();print(*l[::-1]);print(*[w[::-1] for w in l])
